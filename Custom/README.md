@@ -1,4 +1,4 @@
-# WXY-RPC
+# cwh-RPC
 
 ## 介绍
 
@@ -6,15 +6,13 @@
 
 同时引入其他通信协议，有 Http、Socket 等，注册中心引入了 Zookeeper、Nacos、Eureka等。
 
-基于 JMH 压测在 10000 并发量下的吞吐量在 29300 上下。
 
-----------------
 
 ### 项目实现内容
 
 - [x] 实现基于 Netty/Socket/Http 三种方式进行网路通信
 - [x] 自定义消息协议，编解码器
-- [x] 五种序列化算法（JDK、JSON、HESSIAN、KRYO、PROTOSTUFF）
+- [x] 四种序列化算法（JDK、JSON、HESSIAN、PROTOSTUFF）
 - [x] 三种负载均衡算法（RoundRobin、Random、ConsistentHash）
 - [x] 两种动态代理（JDK、CGLIB）
 - [x] 基于 Zookeeper 的服务注册与发现，增加服务本地缓存与监听
@@ -108,7 +106,7 @@ RPC框架一般必须包含三个组件，分别是**客户端、服务端**以�
 
 ##### 编解码实现
 
-编解码主要实现类为：`com.wxy.rpc.core.codec.SharableRpcMessageCodec.java`，该类继承于 netty 中的 `io.netty.handler.codec.MessageToMessageCodec`，这个类是一个用于动态编/解码消息的编解码器，这可以看作是`MessageToMessageDecoder` 和 `MessageToMessageEncoder` 的组合。这个类中有两个方法，`encode()` 就是将输入的 `RpcMessage` 编码成 `ByteBuf` ，`decode()` 就是将 `ByteBuf` 解码成 `RpcMessage`，编码为出站操作，解码为入站操作。
+编解码主要实现类为：`com.cwh.rpc.core.codec.SharableRpcMessageCodec.java`，该类继承于 netty 中的 `io.netty.handler.codec.MessageToMessageCodec`，这个类是一个用于动态编/解码消息的编解码器，这可以看作是`MessageToMessageDecoder` 和 `MessageToMessageEncoder` 的组合。这个类中有两个方法，`encode()` 就是将输入的 `RpcMessage` 编码成 `ByteBuf` ，`decode()` 就是将 `ByteBuf` 解码成 `RpcMessage`，编码为出站操作，解码为入站操作。
 
 ##### 解决粘包半包
 
@@ -141,7 +139,7 @@ RPC框架一般必须包含三个组件，分别是**客户端、服务端**以�
 - 分隔符：每一条消息采用分隔符，例如 \n ，缺点是需要转义；
 - 消息长度+消息内容：每一条消息分为 header 和 body，header 中包含 body 的长度（推荐）；
 
-本项目采取的是 消息长度 + 消息内容 来解决的半包问题，主要实现类为 `com.wxy.rpc.core.codec.RpcFrameDecoder` ，这个类继承了 netty 中的 `io.netty.handler.codec.LengthFieldBasedFrameDecoder` 类，这个类是一种解码器，根据消息中长度字段的值动态拆分接收到的ByteBufs。
+本项目采取的是 消息长度 + 消息内容 来解决的半包问题，主要实现类为 `com.cwh.rpc.core.codec.RpcFrameDecoder` ，这个类继承了 netty 中的 `io.netty.handler.codec.LengthFieldBasedFrameDecoder` 类，这个类是一种解码器，根据消息中长度字段的值动态拆分接收到的ByteBufs。
 
 在发送消息前，先约定用定长字节表示接下来数据的长度：
 
@@ -272,7 +270,7 @@ RPC 框架怎么做到像调用本地接口一样调用远端服务呢？这必�
 
 #### 实现
 
-本项目实现的是第一种 Sync 同步调用。具体的实现逻辑在类 `com.wxy.rpc.client.transport.netty.NettyRpcClient` 中，使用 `io.netty.util.concurrent.Promise` 去接受响应结果，将暂未处理的`RpcResponse`根据`sequenceId`信息存入`ConcurrentHashMap` 中，`RpcResponseHadler` 根据 `sequenceId` 取出 `Promise` 对象存储的未处理的响应消息，处理后通过设置 `promise`的状态来`notify`等待结果的线程并返回，核心代码如下：
+本项目实现的是第一种 Sync 同步调用。具体的实现逻辑在类 `com.cwh.rpc.client.transport.netty.NettyRpcClient` 中，使用 `io.netty.util.concurrent.Promise` 去接受响应结果，将暂未处理的`RpcResponse`根据`sequenceId`信息存入`ConcurrentHashMap` 中，`RpcResponseHadler` 根据 `sequenceId` 取出 `Promise` 对象存储的未处理的响应消息，处理后通过设置 `promise`的状态来`notify`等待结果的线程并返回，核心代码如下：
 
 ```java
 public class NettyRpcClient implements RpcClient {
@@ -509,7 +507,7 @@ public class RpcClientBeanPostProcessor implements BeanPostProcessor {
                 RpcReference rpcReference = field.getAnnotation(RpcReference.class);
                 // 默认类为属性当前类型
                 // filed.class = java.lang.reflect.Field
-                // filed.type = com.wxy.xxx.service.XxxService
+                // filed.type = com.cwh.xxx.service.XxxService
                 Class<?> clazz = field.getType();
                 try {
                     // 如果指定了全限定类型接口名
@@ -551,7 +549,7 @@ public class RpcClientBeanPostProcessor implements BeanPostProcessor {
 
 具体实现代码在
 
- `com.wxy.rpc.client.transport.netty.NettyRpcClient`，`com.wxy.rpc.client.transport.netty.ChannelProvider` 和   `com.wxy.rpc.server.transport.netty.NettyRpcRequestHandler`三个类中。
+ `com.cwh.rpc.client.transport.netty.NettyRpcClient`，`com.cwh.rpc.client.transport.netty.ChannelProvider` 和   `com.cwh.rpc.server.transport.netty.NettyRpcRequestHandler`三个类中。
 
 ### 增加 Zookeeper 服务本地缓存并监听
 
@@ -609,25 +607,6 @@ public class ZookeeperServiceDiscovery implements ServiceDiscovery {
 ```
 
 
-
-### 实现了 SPI 机制
-
-已实现，参考Dubbo部分源码，实现了自定义的SPI机制，目前仅支持根据接口类型加载配置文件中的所有具体的扩展实现类，并且可以根据指定的key获取特定的实现类，具体实现类逻辑在 `com.wxy.rpc.core.extension.ExtensionLoader` 中。
-
-服务存储目录在 `resource/META-INF/extensions`
-
-<img src="images\spi服务目录.png" alt="image-20230222120620124" style="zoom: 67%;" />
-
-文件内容格式如下：
-
-```config
-protostuff=com.wxy.rpc.core.serialization.protostuff.ProtostuffSerialization
-kryo=com.wxy.rpc.core.serialization.kryo.KryoSerialization
-json=com.wxy.rpc.core.serialization.json.JsonSerialization
-jdk=com.wxy.rpc.core.serialization.jdk.JdkSerialization
-hessian=com.wxy.rpc.core.serialization.hessian.HessianSerialization
-```
-
 ## 环境搭建
 
 - 操作系统：Windows + Linux
@@ -636,78 +615,3 @@ hessian=com.wxy.rpc.core.serialization.hessian.HessianSerialization
 - 项目依赖管理工具：Maven 4.0.0
 - 注册中心：Zookeeeper 3.7.1
 
-## 项目测试
-
-- 启动 Zookeeper 服务器：进入到zk的bin目录，输入命令 `./zkServer.sh`
-- 启动 provider 模块 ProviderApplication
-- 启动 consumer 模块 ConsumerApplication
-- 测试：浏览器输入 http://localhost:8080/hello/zhangsan ，成功返回：`hello, zhangsan`，rpc 调用成功。
-- 调用接口 100 次耗时 26ms，调用 10_0000 次耗时 25164 ms。
-
-## 压力测试
-
-**[JMH](https://zhuanlan.zhihu.com/p/434083702)**
-
-`JMH`即`Java Microbenchmark Harness`，是`Java`用来做基准测试的一个工具，该工具由`OpenJDK`提供并维护，测试结果可信度高。
-
-相对于 Jmeter、ab ，它通过编写代码的方式进行压测，在特定场景下会更能评估某项性能。
-
-本次通过使用 JMH 来压测 RPC 的性能（官方也是使用JMH压测）
-
-启动 10000 个线程同时访问 sayHello 接口，总共进行 3 轮测试，测试结果如下：
-
-```
-Benchmark                                          Mode     Cnt      Score       Error  Units
-BenchmarkTest.testSayHello                        thrpt       3  29288.573 ± 20780.318  ops/s
-BenchmarkTest.testSayHello                         avgt       3      0.532 ±     6.159   s/op
-BenchmarkTest.testSayHello                       sample  395972      0.382 ±     0.002   s/op
-BenchmarkTest.testSayHello:testSayHello·p0.00    sample              0.003               s/op
-BenchmarkTest.testSayHello:testSayHello·p0.50    sample              0.318               s/op
-BenchmarkTest.testSayHello:testSayHello·p0.90    sample              0.387               s/op
-BenchmarkTest.testSayHello:testSayHello·p0.95    sample              0.840               s/op
-BenchmarkTest.testSayHello:testSayHello·p0.99    sample              2.282               s/op
-BenchmarkTest.testSayHello:testSayHello·p0.999   sample              2.470               s/op
-BenchmarkTest.testSayHello:testSayHello·p0.9999  sample              2.496               s/op
-BenchmarkTest.testSayHello:testSayHello·p1.00    sample              2.508               s/op
-BenchmarkTest.testSayHello                           ss       3      0.118 ±     0.051   s/op
-```
-
-测试曲线图：
-
-<img src="images\rpc10000并发测试结果.png">
-
-同时，在同样的条件下，启动 5000（1w个电脑会卡死） 个线程同时对 **Dubbo2.7.14** 发起 RPC 调用，得到的结果如下：
-
-```
-Benchmark                                       Mode     Cnt      Score      Error  Units
-StressTest.testSayHello                        thrpt       3  41549.866 ± 9703.455  ops/s
-StressTest.testSayHello                         avgt       3      0.119 ±    0.034   s/op
-StressTest.testSayHello                       sample  611821      0.123 ±    0.001   s/op
-StressTest.testSayHello:testSayHello·p0.00    sample              0.042              s/op
-StressTest.testSayHello:testSayHello·p0.50    sample              0.119              s/op
-StressTest.testSayHello:testSayHello·p0.90    sample              0.129              s/op
-StressTest.testSayHello:testSayHello·p0.95    sample              0.139              s/op
-StressTest.testSayHello:testSayHello·p0.99    sample              0.195              s/op
-StressTest.testSayHello:testSayHello·p0.999   sample              0.446              s/op
-StressTest.testSayHello:testSayHello·p0.9999  sample              0.455              s/op
-StressTest.testSayHello:testSayHello·p1.00    sample              0.456              s/op
-StressTest.testSayHello                           ss       3      0.058 ±    0.135   s/op
-```
-
-<img src="images\dubbo5000并发测试结果.png">
-
-**结果**：
-
-|            | RPC     | RPC   | Dubbo2.7.14 |
-| ---------- | ------- | ----- | ----------- |
-| 并发数     | 10000   | 5000  | 5000        |
-| TPS        | 29288   | 31675 | 41549       |
-| RTT        | 95% 8ms | xxx   | 95% 50ms    |
-| AVGTime/OP | 0.532   | 0.532 | 0.119       |
-| OOM        | 无      | 无    | 无          |
-
-对比了 jmeter、Apache-Benmark（ab）、jmh 这三个压测工具，个人比较推荐使用jmh，原因有：
-
-- jmh压测简单，只需要引入依赖，声明注解
-- 准确性高，目前大多数性能压测都是使用jmh
-- 缺点就是代码入侵
