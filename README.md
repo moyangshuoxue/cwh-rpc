@@ -1,4 +1,4 @@
-# Cwh-RPC
+# cwh-RPC
 
 ## 介绍
 
@@ -8,13 +8,11 @@
 
 
 
-----------------
-
 ### 项目实现内容
 
 - [x] 实现基于 Netty/Socket/Http 三种方式进行网路通信
 - [x] 自定义消息协议，编解码器
-- [x] 五种序列化算法（JDK、JSON、HESSIAN、KRYO、PROTOSTUFF）
+- [x] 四种序列化算法（JDK、JSON、HESSIAN、PROTOSTUFF）
 - [x] 三种负载均衡算法（RoundRobin、Random、ConsistentHash）
 - [x] 两种动态代理（JDK、CGLIB）
 - [x] 基于 Zookeeper 的服务注册与发现，增加服务本地缓存与监听
@@ -108,7 +106,7 @@ RPC框架一般必须包含三个组件，分别是**客户端、服务端**以�
 
 ##### 编解码实现
 
-编解码主要实现类为：`com.wxy.rpc.core.codec.SharableRpcMessageCodec.java`，该类继承于 netty 中的 `io.netty.handler.codec.MessageToMessageCodec`，这个类是一个用于动态编/解码消息的编解码器，这可以看作是`MessageToMessageDecoder` 和 `MessageToMessageEncoder` 的组合。这个类中有两个方法，`encode()` 就是将输入的 `RpcMessage` 编码成 `ByteBuf` ，`decode()` 就是将 `ByteBuf` 解码成 `RpcMessage`，编码为出站操作，解码为入站操作。
+编解码主要实现类为：`com.cwh.rpc.core.codec.SharableRpcMessageCodec.java`，该类继承于 netty 中的 `io.netty.handler.codec.MessageToMessageCodec`，这个类是一个用于动态编/解码消息的编解码器，这可以看作是`MessageToMessageDecoder` 和 `MessageToMessageEncoder` 的组合。这个类中有两个方法，`encode()` 就是将输入的 `RpcMessage` 编码成 `ByteBuf` ，`decode()` 就是将 `ByteBuf` 解码成 `RpcMessage`，编码为出站操作，解码为入站操作。
 
 ##### 解决粘包半包
 
@@ -141,7 +139,7 @@ RPC框架一般必须包含三个组件，分别是**客户端、服务端**以�
 - 分隔符：每一条消息采用分隔符，例如 \n ，缺点是需要转义；
 - 消息长度+消息内容：每一条消息分为 header 和 body，header 中包含 body 的长度（推荐）；
 
-本项目采取的是 消息长度 + 消息内容 来解决的半包问题，主要实现类为 `com.wxy.rpc.core.codec.RpcFrameDecoder` ，这个类继承了 netty 中的 `io.netty.handler.codec.LengthFieldBasedFrameDecoder` 类，这个类是一种解码器，根据消息中长度字段的值动态拆分接收到的ByteBufs。
+本项目采取的是 消息长度 + 消息内容 来解决的半包问题，主要实现类为 `com.cwh.rpc.core.codec.RpcFrameDecoder` ，这个类继承了 netty 中的 `io.netty.handler.codec.LengthFieldBasedFrameDecoder` 类，这个类是一种解码器，根据消息中长度字段的值动态拆分接收到的ByteBufs。
 
 在发送消息前，先约定用定长字节表示接下来数据的长度：
 
@@ -193,13 +191,13 @@ public class LengthFieldBasedFrameDecoder {
 
 五种序列化算法的比较如下：
 
-| 序列化算法     | **优点**                 | **缺点**         |
-| -------------- | ------------------------ | ---------------- |
-| **Kryo**       | 速度快，序列化后体积小   | 跨语言支持较复杂 |
-| **Hessian**    | 默认支持跨语言           | 较慢             |
-| **Protostuff** | 速度快，基于protobuf     | 需静态编译       |
-| **Json**       | 使用方便                 | 性能一般         |
-| **Jdk**        | 使用方便，可序列化所有类 | 速度慢，占空间   |
+| 序列化算法          | **优点**         | **缺点**   |
+|----------------|----------------|----------|
+| **Kryo**       | 速度快，序列化后体积小    | 跨语言支持较复杂 |
+| **Hessian**    | 默认支持跨语言        | 较慢       |
+| **Protostuff** | 速度快，基于protobuf | 需静态编译    |
+| **Json**       | 使用方便           | 性能一般     |
+| **Jdk**        | 使用方便，可序列化所有类   | 速度慢，占空间  |
 
 性能对比图，单位为 nanos：
 
@@ -272,7 +270,7 @@ RPC 框架怎么做到像调用本地接口一样调用远端服务呢？这必�
 
 #### 实现
 
-本项目实现的是第一种 Sync 同步调用。具体的实现逻辑在类 `com.wxy.rpc.client.transport.netty.NettyRpcClient` 中，使用 `io.netty.util.concurrent.Promise` 去接受响应结果，将暂未处理的`RpcResponse`根据`sequenceId`信息存入`ConcurrentHashMap` 中，`RpcResponseHadler` 根据 `sequenceId` 取出 `Promise` 对象存储的未处理的响应消息，处理后通过设置 `promise`的状态来`notify`等待结果的线程并返回，核心代码如下：
+本项目实现的是第一种 Sync 同步调用。具体的实现逻辑在类 `com.cwh.rpc.client.transport.netty.NettyRpcClient` 中，使用 `io.netty.util.concurrent.Promise` 去接受响应结果，将暂未处理的`RpcResponse`根据`sequenceId`信息存入`ConcurrentHashMap` 中，`RpcResponseHadler` 根据 `sequenceId` 取出 `Promise` 对象存储的未处理的响应消息，处理后通过设置 `promise`的状态来`notify`等待结果的线程并返回，核心代码如下：
 
 ```java
 public class NettyRpcClient implements RpcClient {
@@ -509,7 +507,7 @@ public class RpcClientBeanPostProcessor implements BeanPostProcessor {
                 RpcReference rpcReference = field.getAnnotation(RpcReference.class);
                 // 默认类为属性当前类型
                 // filed.class = java.lang.reflect.Field
-                // filed.type = com.wxy.xxx.service.XxxService
+                // filed.type = com.cwh.xxx.service.XxxService
                 Class<?> clazz = field.getType();
                 try {
                     // 如果指定了全限定类型接口名
@@ -551,7 +549,7 @@ public class RpcClientBeanPostProcessor implements BeanPostProcessor {
 
 具体实现代码在
 
- `com.wxy.rpc.client.transport.netty.NettyRpcClient`，`com.wxy.rpc.client.transport.netty.ChannelProvider` 和   `com.wxy.rpc.server.transport.netty.NettyRpcRequestHandler`三个类中。
+ `com.cwh.rpc.client.transport.netty.NettyRpcClient`，`com.cwh.rpc.client.transport.netty.ChannelProvider` 和   `com.cwh.rpc.server.transport.netty.NettyRpcRequestHandler`三个类中。
 
 ### 增加 Zookeeper 服务本地缓存并监听
 
@@ -609,25 +607,6 @@ public class ZookeeperServiceDiscovery implements ServiceDiscovery {
 ```
 
 
-
-### 实现了 SPI 机制
-
-已实现，参考Dubbo部分源码，实现了自定义的SPI机制，目前仅支持根据接口类型加载配置文件中的所有具体的扩展实现类，并且可以根据指定的key获取特定的实现类，具体实现类逻辑在 `com.wxy.rpc.core.extension.ExtensionLoader` 中。
-
-服务存储目录在 `resource/META-INF/extensions`
-
-<img src="images\spi服务目录.png" alt="image-20230222120620124" style="zoom: 67%;" />
-
-文件内容格式如下：
-
-```config
-protostuff=com.wxy.rpc.core.serialization.protostuff.ProtostuffSerialization
-kryo=com.wxy.rpc.core.serialization.kryo.KryoSerialization
-json=com.wxy.rpc.core.serialization.json.JsonSerialization
-jdk=com.wxy.rpc.core.serialization.jdk.JdkSerialization
-hessian=com.wxy.rpc.core.serialization.hessian.HessianSerialization
-```
-
 ## 环境搭建
 
 - 操作系统：Windows + Linux
@@ -635,3 +614,4 @@ hessian=com.wxy.rpc.core.serialization.hessian.HessianSerialization
 - 项目技术栈：SpringBoot 2.5.2 + JDK 1.8 + Netty 4.1.65.Final
 - 项目依赖管理工具：Maven 4.0.0
 - 注册中心：Zookeeeper 3.7.1
+
